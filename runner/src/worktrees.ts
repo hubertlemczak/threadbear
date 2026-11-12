@@ -441,6 +441,8 @@ export async function land(t: LandTarget, opts: LandOptions = {}): Promise<numbe
 const landedForDir = (common: string): string => path.join(common, 'threadbear-land-done');
 
 function writeLandedFor(common: string, commit: string, landed: string): void {
+  // Landed as it was (first in the group, so not rebased): nothing to move.
+  if (commit === landed) return;
   try {
     fs.mkdirSync(landedForDir(common), { recursive: true });
     fs.writeFileSync(path.join(landedForDir(common), commit), landed);
@@ -463,6 +465,10 @@ async function recoverLandedFor(t: LandTarget, common: string, out: (line: strin
   try {
     landed = fs.readFileSync(file, 'utf8').trim();
   } catch {
+    return;
+  }
+  if (landed === head) {
+    fs.rmSync(file, { force: true });
     return;
   }
   if ((await gitOut(t.path, ['rev-parse', '--abbrev-ref', 'HEAD'])) !== t.branch) return;

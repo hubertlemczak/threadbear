@@ -305,8 +305,9 @@ test("a branch that landed while its tb was stopped is moved to what landed by i
   sh(c.path, 'git commit -q --allow-empty -m "Empty on c"');
   const asked = sh(c.path, 'git rev-parse HEAD');
   // What a group check landed for it (as a holder that couldn't move its
-  // branch leaves it): its commits on main.
-  sh(main, `git cherry-pick --allow-empty ${asked}~1 ${asked}`);
+  // branch leaves it): its commits on main. A later committer date, or in
+  // the same second the picks are the very same commits, nothing to move.
+  sh(main, `GIT_COMMITTER_DATE='2030-01-01T00:00:00Z' git cherry-pick --allow-empty ${asked}~1 ${asked}`);
   const landed = sh(main, 'git rev-parse main');
   const done = path.join(main, '.git', 'threadbear-land-done');
   fs.mkdirSync(done, { recursive: true });
