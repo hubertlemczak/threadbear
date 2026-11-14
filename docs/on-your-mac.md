@@ -496,7 +496,11 @@ File references are where to look.
   transcripts, so it can show how much room each login has
   (`runner/src/accounts.ts`, `runner/src/token-tally.ts`;
   `THREADBEAR_TOKEN_TALLY=off` stops the counting). It never reads or
-  copies login tokens or the Keychain.
+  copies login tokens or the Keychain. Before each Claude session it also
+  reads that login's `settings.json` and
+  `/Library/Application Support/ClaudeCode/managed-settings.json` for an
+  `apiKeyHelper` or a key, gateway or cloud variable in `env`, which keep
+  the CLI's own request label (`runner/src/adapters/claude/adapter.ts`).
 - Whether `~/.opencode/bin/opencode`, an
   `opencode` or `cursor-agent` on your PATH, `~/.local/bin/cursor-agent` and
   `~/.local/bin/agent` exist and where they really lead, and whether

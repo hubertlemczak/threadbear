@@ -43,12 +43,63 @@ const INHERITED_SESSION_VARS = [
   'AI_AGENT',
 ];
 
-export function cliEnv(account: Account, base: NodeJS.ProcessEnv = process.env): Record<string, string | undefined> {
+// The name Claude Code reports its requests under (CLAUDE_CODE_ENTRYPOINT,
+// sent as cc_entrypoint). Left to the SDK it's `sdk-ts`, which Anthropic's
+// 5-hour meter counts at roughly 1.6 to 2.9 times the interactive CLI's
+// rate for the same tokens (anthropics/claude-code#97074, open with no
+// answer from Anthropic as of 14 Nov 2026). Many SDK apps name themselves
+// instead (Mousse, T3 Code forks, Orca); this does the same, from runner.json
+// `claudeEntrypoint` (main.ts): a name, or false for the SDK's own label.
+let entrypointName: string | null = null;
+export function setClaudeEntrypoint(name: string | null): void {
+  entrypointName = name;
+}
+
+// What makes an unknown entrypoint unsafe: a key, a gateway or a cloud
+// route. Accounts that pay only with API credits refuse an unknown name,
+// and proxies such as CLIProxyAPI rewrite requests carrying one, breaking
+// the prompt cache mid-session (Mousse's notes on #1137). So the name goes
+// only on a plain subscription sign-in.
+const NOT_SUBSCRIPTION_VARS = [
+  'ANTHROPIC_API_KEY',
+  'ANTHROPIC_AUTH_TOKEN',
+  'ANTHROPIC_BASE_URL',
+  'CLAUDE_CODE_USE_BEDROCK',
+  'CLAUDE_CODE_USE_VERTEX',
+  'CLAUDE_CODE_USE_FOUNDRY',
+];
+const MANAGED_SETTINGS = '/Library/Application Support/ClaudeCode/managed-settings.json';
+
+function settingsSayNotSubscription(file: string): boolean {
+  let json: unknown;
+  try {
+    json = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch {
+    // No file is the usual case; one Claude can't parse either counts as none.
+    return false;
+  }
+  if (!json || typeof json !== 'object') return false;
+  const o = json as { apiKeyHelper?: unknown; env?: unknown };
+  if (o.apiKeyHelper) return true;
+  const env = o.env && typeof o.env === 'object' ? (o.env as Record<string, unknown>) : {};
+  return NOT_SUBSCRIPTION_VARS.some((k) => env[k]);
+}
+
+export function subscriptionSignIn(account: Account, env: Record<string, string | undefined>, managed = MANAGED_SETTINGS): boolean {
+  if (NOT_SUBSCRIPTION_VARS.some((k) => env[k])) return false;
+  const configDir = account.configDir || path.join(os.homedir(), '.claude');
+  return ![path.join(configDir, 'settings.json'), managed].some(settingsSayNotSubscription);
+}
+
+export function cliEnv(account: Account, base: NodeJS.ProcessEnv = process.env, managed?: string): Record<string, string | undefined> {
   const env: Record<string, string | undefined> = { ...base };
   for (const k of INHERITED_SESSION_VARS) delete env[k];
   if (account.id === 'claude-main') delete env.CLAUDE_CONFIG_DIR;
   else env.CLAUDE_CONFIG_DIR = account.configDir;
   env.CLAUDE_AGENT_SDK_CLIENT_APP = `threadbear-runner/${RUNNER_VERSION}`;
+  if (account.provider === 'claude' && entrypointName && subscriptionSignIn(account, env, managed)) {
+    env.CLAUDE_CODE_ENTRYPOINT = entrypointName;
+  }
   return env;
 }
 

@@ -1308,9 +1308,15 @@ Claude threads run through Claude Code's Agent SDK, and Anthropic's 5-hour
 meter seems to count that traffic as more per token than the same work typed
 into `claude` in a terminal. People have measured anywhere from about 1.6 to
 2.9 times as much ([anthropics/claude-code#97074](https://github.com/anthropics/claude-code/issues/97074)),
-while weekly limits come out about the same in most of their tests. Some apps
-change the label the SDK sends to get around it. Threadbear leaves the label
-as it is for now.
+while weekly limits come out about the same in most of their tests. The
+meter goes by the label each request carries, so on a plain subscription
+login Threadbear's Claude threads call themselves `threadbear`, as many SDK
+apps now do with their own names. It leaves the SDK's label on a login that
+uses an API key, a gateway or proxy (`ANTHROPIC_BASE_URL`), or Bedrock,
+Vertex or Foundry, where an unknown label can be refused or break the
+prompt cache. Anthropic hasn't said whether it minds; `"claudeEntrypoint":
+false` in `runner.json` goes back to the SDK's label, and a name there uses
+that instead. It takes effect when the runner next starts.
 
 ## Standing instructions
 <!-- slug: instructions -->

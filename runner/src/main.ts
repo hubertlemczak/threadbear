@@ -39,7 +39,7 @@ import { createLogger } from './log.ts';
 import { hidIdleMs, isAtMac } from './presence.ts';
 import { ThreadStore } from './store.ts';
 import { AccountRegistry } from './accounts.ts';
-import { ClaudeAdapter } from './adapters/claude/adapter.ts';
+import { ClaudeAdapter, setClaudeEntrypoint } from './adapters/claude/adapter.ts';
 import { ProcessRegistry } from './proc.ts';
 import { Runner } from './runner.ts';
 import { startOwnThread } from './own-threads.ts';
@@ -107,6 +107,7 @@ async function main(): Promise<void> {
   const bootImports = Math.round(bootSince);
   const bootStep = (name: string) => (bootSteps[name] = Math.round(performance.now() - bootSince));
   const cfg = loadConfig();
+  setClaudeEntrypoint(cfg.claudeEntrypoint);
   // A dev runner on a copy of the real data dir (real-copy.ts): whatever
   // came with the copy, it never syncs as Mike's runner (nor relays or
   // takes moves, which go through sync), fires schedules, has the
